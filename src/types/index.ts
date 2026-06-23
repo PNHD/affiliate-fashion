@@ -35,6 +35,16 @@ export interface Video {
   updated_at: string;
 }
 
+// ── Site settings (singleton row, id = 1) ──
+export interface SiteSettings {
+  id: number;
+  display_name: string | null;
+  bio: string | null;
+  tiktok_url: string | null;
+  avatar_url: string | null;
+  updated_at: string;
+}
+
 // ── Video-Product junction ──
 export interface VideoProduct {
   video_id: string;

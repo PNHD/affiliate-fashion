@@ -4,15 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/ThemeProvider";
+import { useSettings } from "@/lib/api-hooks";
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "Products" },
-  { href: "/videos", label: "Videos" },
-];
+const NAV_LINKS = [{ href: "/", label: "Lookbook" }];
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const settings = useSettings();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -36,7 +34,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="group flex items-center gap-2">
           <span className="font-display text-2xl font-semibold tracking-tight text-brand-ink dark:text-dark-text transition-colors">
-            Maison
+            {settings?.display_name ?? "Thiên Kim"}
           </span>
           <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-accent dark:bg-dark-accent" />
         </Link>

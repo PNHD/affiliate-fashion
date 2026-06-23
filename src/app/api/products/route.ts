@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100);
   const category = searchParams.get("category");
   const sourceType = searchParams.get("source_type");
+  const videoId = searchParams.get("video_id");
   const search = searchParams.get("search");
   const sort = searchParams.get("sort") || "newest";
   const offset = (page - 1) * limit;
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
 
   if (category) query = query.eq("category", category);
   if (sourceType) query = query.eq("source_type", sourceType);
+  if (videoId) query = query.eq("video_id", videoId);
   if (search) query = query.ilike("title", `%${search}%`);
 
   switch (sort) {

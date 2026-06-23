@@ -36,6 +36,13 @@ export const videoSchema = z.object({
 
 export const videoUpdateSchema = videoSchema.partial();
 
+export const settingsSchema = z.object({
+  display_name: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
+  tiktok_url: z.string().nullable().optional(),
+  avatar_url: z.string().nullable().optional(),
+});
+
 export const clickEventSchema = z.object({
   product_id: z.string().uuid(),
   referrer: z.string().optional(),

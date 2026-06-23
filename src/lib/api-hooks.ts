@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { adaptProduct, adaptVideo, type ProductView, type VideoView } from "./data-adapter";
+import type { SiteSettings } from "@/types";
 
 // ── Products hook ──
 export function useProducts(params?: {
@@ -11,6 +12,7 @@ export function useProducts(params?: {
   category?: string;
   sort?: string;
   sourceType?: string;
+  videoId?: string;
 }) {
   const [products, setProducts] = useState<ProductView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,7 @@ export function useProducts(params?: {
     if (params?.sort) qs.set("sort", params.sort ?? "newest");
     if (params?.sourceType && params.sourceType !== "all")
       qs.set("source_type", params.sourceType);
+    if (params?.videoId) qs.set("video_id", params.videoId);
 
     fetch(`/api/products?${qs}`)
       .then((r) => r.json())
@@ -43,7 +46,7 @@ export function useProducts(params?: {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [page, limit, params?.search, params?.category, params?.sort, params?.sourceType]);
+  }, [page, limit, params?.search, params?.category, params?.sort, params?.sourceType, params?.videoId]);
 
   useEffect(() => {
     fetchProducts();
@@ -112,4 +115,20 @@ export function useVideos(params?: { page?: number; limit?: number }) {
   }, [fetchVideos]);
 
   return { videos, loading, error, total, retry: fetchVideos };
+}
+
+// ── Site settings hook (creator header) ──
+export function useSettings() {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setSettings(d.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  return settings;
 }

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Package,
   Video,
+  Settings,
   LogOut,
   Plus,
   ChevronRight,
@@ -40,8 +41,9 @@ export default function AdminLayout({
 
   const links = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/videos", label: "Looks", icon: Video },
     { href: "/admin/products", label: "Products", icon: Package },
-    { href: "/admin/videos", label: "Videos", icon: Video },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
   return (
