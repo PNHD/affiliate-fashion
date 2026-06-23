@@ -1,13 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Plus, Loader2, Trash2, ExternalLink, Video } from "lucide-react";
 import type { Video as VideoType } from "@/types";
 
 export default function AdminVideosPage() {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [url, setUrl] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url) return;
+    setAdding(true);
+    setAddError("");
+    const res = await fetch("/api/videos/from-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    setAdding(false);
+    if (data.success) {
+      setVideos((v) => [data.data, ...v]);
+      setUrl("");
+    } else {
+      setAddError(data.error || "Thêm video thất bại");
+    }
+  };
 
   const fetchVideos = async () => {
     const res = await fetch("/api/videos?limit=50");
@@ -28,15 +50,30 @@ export default function AdminVideosPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Videos</h2>
-        <Link
-          href="/admin/products/new"
-          className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Add Product
-        </Link>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">Videos</h2>
+        <form onSubmit={handleAdd} className="flex gap-2">
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Dán link video TikTok..."
+            className="flex-1 max-w-md px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+          />
+          <button
+            type="submit"
+            disabled={adding || !url}
+            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {adding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Add Video
+          </button>
+        </form>
+        {addError && <p className="text-sm text-red-600 mt-2">⚠️ {addError}</p>}
       </div>
 
       {loading ? (

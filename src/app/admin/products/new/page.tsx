@@ -3,21 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { ProductInput, ScrapeResult } from "@/types";
-import {
-  ArrowLeft,
-  Loader2,
-  Search,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import type { ProductInput } from "@/types";
+import { ArrowLeft, Loader2, Plus, Trash2, Upload } from "lucide-react";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [scrapeLoading, setScrapeLoading] = useState(false);
-  const [scrapeError, setScrapeError] = useState("");
 
   const [form, setForm] = useState<ProductInput>({
     title: "",
@@ -34,54 +25,8 @@ export default function NewProductPage() {
     is_active: true,
   });
 
-  const [scrapeUrl, setScrapeUrl] = useState("");
   const [imageInput, setImageInput] = useState("");
   const [tagInput, setTagInput] = useState("");
-
-  // Scrape a URL
-  const handleScrape = async () => {
-    if (!scrapeUrl) return;
-    setScrapeLoading(true);
-    setScrapeError("");
-
-    try {
-      const res = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: scrapeUrl }),
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        setScrapeError(data.error || "Scraping failed");
-        return;
-      }
-
-      const result: ScrapeResult = data.data;
-      if (result.error) {
-        setScrapeError(result.error);
-        // Still fill what we got
-      }
-
-      setForm((prev) => ({
-        ...prev,
-        title: result.title || prev.title,
-        description: result.description || prev.description,
-        price: result.price ?? prev.price,
-        currency: result.currency || prev.currency,
-        images:
-          result.images.length > 0
-            ? [...new Set([...prev.images, ...result.images])]
-            : prev.images,
-        source_url: result.source_url,
-        source_type: result.source_type,
-      }));
-    } catch {
-      setScrapeError("Network error. Try again.");
-    } finally {
-      setScrapeLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,39 +77,6 @@ export default function NewProductPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h2 className="text-2xl font-bold text-gray-900">Add Product</h2>
-      </div>
-
-      {/* ── Scrape section ── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-3">
-          Fetch from URL (Shopee / TikTok / Lazada)
-        </h3>
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={scrapeUrl}
-            onChange={(e) => setScrapeUrl(e.target.value)}
-            placeholder="https://shopee.vn/product/..."
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-          />
-          <button
-            onClick={handleScrape}
-            disabled={scrapeLoading || !scrapeUrl}
-            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {scrapeLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-            Fetch
-          </button>
-        </div>
-        {scrapeError && (
-          <p className="text-sm text-amber-600 mt-2 bg-amber-50 rounded-lg p-2">
-            ⚠️ {scrapeError} — You can fill manually below.
-          </p>
-        )}
       </div>
 
       {/* ── Product form ── */}
