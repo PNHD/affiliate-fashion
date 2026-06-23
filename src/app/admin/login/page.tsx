@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LogIn, Loader2 } from "lucide-react";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  not_authorized: "Email này không có quyền truy cập trang quản trị.",
+  auth_failed: "Liên kết đăng nhập không hợp lệ hoặc đã hết hạn.",
+};
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -13,6 +18,12 @@ export default function AdminLoginPage() {
   const [sent, setSent] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  // Surface ?error= from the auth gate (middleware / callback redirect).
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code) setError(ERROR_MESSAGES[code] ?? "Đăng nhập thất bại.");
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

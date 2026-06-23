@@ -2,6 +2,17 @@ export function cn(...inputs: (string | boolean | undefined | null)[]): string {
   return inputs.filter(Boolean).join(" ");
 }
 
+// Admin gate: email must be in ADMIN_EMAILS (comma-separated). Server-only —
+// ADMIN_EMAILS is not NEXT_PUBLIC, so on the client this is always false.
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const allowed = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
+
 export function formatPrice(price: number | null, currency = "VND"): string {
   if (price == null) return "Liên hệ";
   if (currency === "VND") {

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminEmail } from "@/lib/utils";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder";
@@ -36,17 +37,21 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect /admin routes (except /admin/login)
-  if (isAdminRoute && !isLoginPage && !user) {
+  const isAdmin = isAdminEmail(user?.email);
+
+  // Protect /admin routes (except /admin/login): must be a logged-in allow-listed admin
+  if (isAdminRoute && !isLoginPage && !isAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
+    if (user) url.searchParams.set("error", "not_authorized");
     return NextResponse.redirect(url);
   }
 
-  // If logged in and visiting /admin/login, redirect to /admin
-  if (isLoginPage && user) {
+  // If an allow-listed admin is on the login page, send them to the dashboard
+  if (isLoginPage && isAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
+    url.searchParams.delete("error");
     return NextResponse.redirect(url);
   }
 
