@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+@layer base {
+  :root {
+    --color-cream: #FAF9F6;
+    --color-ink: #171717;
+    --color-stone: #6B6760;
+    --color-border: #E8E5E0;
+    --color-accent: #C2704A;
+    --color-accent-hover: #A85A3A;
+    --color-surface: #FFFFFF;
+    --color-surface-muted: #F5F4F1;
+    --color-surface-hover: #F0EEE9;
+  }
+
+  .dark {
+    --color-cream: #0F0F0F;
+    --color-ink: #F0EFEC;
+    --color-stone: #8B8880;
+    --color-border: #2A2A2A;
+    --color-accent: #D48563;
+    --color-accent-hover: #E09A7A;
+    --color-surface: #1A1A1A;
+    --color-surface-muted: #141414;
+    --color-surface-hover: #242424;
+  }
+
+  * {
+    @apply border-brand-border dark:border-dark-border;
+  }
+
+  body {
+    @apply bg-brand-cream dark:bg-dark-base text-brand-ink dark:text-dark-text font-body antialiased;
+  }
+
+  /* Smooth scroll for the whole site */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Shimmer skeleton */
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-muted dark:bg-dark-card rounded-card;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s infinite;
+    background-size: 200% 100%;
+  }
+  .dark .skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Horizontal scroll container */
+  .scroll-container {
+    @apply flex gap-4 overflow-x-auto pb-4 -mx-4 px-4;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-container > * {
+    scroll-snap-align: start;
+  }
+
+  /* Accent link underline */
+  .accent-link {
+    @apply relative inline-block;
+  }
+  .accent-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-px bg-brand-accent dark:bg-dark-accent transition-all duration-300;
+  }
+  .accent-link:hover::after {
+    @apply w-full;
+  }
+}
