@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import type { Product, ProductInput } from "@/types";
 import { ArrowLeft, Loader2, Save, Trash2, Plus, Eye } from "lucide-react";
+import ImageUploader from "@/components/ImageUploader";
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -27,7 +28,6 @@ export default function EditProductPage() {
     tags: [],
     is_active: true,
   });
-  const [imageInput, setImageInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [looks, setLooks] = useState<{ id: string; title: string }[]>([]);
 
@@ -85,13 +85,6 @@ export default function EditProductPage() {
     if (!confirm("Delete this product permanently?")) return;
     await fetch(`/api/products/${id}`, { method: "DELETE" });
     router.push("/admin/products");
-  };
-
-  const addImage = () => {
-    if (imageInput && !form.images.includes(imageInput)) {
-      setForm({ ...form, images: [...form.images, imageInput] });
-      setImageInput("");
-    }
   };
 
   const addTag = () => {
@@ -236,54 +229,10 @@ export default function EditProductPage() {
           />
         </div>
 
-        {/* Images */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Images
-          </label>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="url"
-              value={imageInput}
-              onChange={(e) => setImageInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-              placeholder="Image URL"
-            />
-            <button
-              type="button"
-              onClick={addImage}
-              className="flex items-center gap-1 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
-            >
-              <Plus className="h-4 w-4" /> Add
-            </button>
-          </div>
-          {form.images.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
-              {form.images.map((url) => (
-                <div key={url} className="relative group">
-                  <img
-                    src={url}
-                    alt=""
-                    className="h-20 w-full object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        images: form.images.filter((i) => i !== url),
-                      })
-                    }
-                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ImageUploader
+          images={form.images}
+          onChange={(imgs) => setForm({ ...form, images: imgs })}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div>
