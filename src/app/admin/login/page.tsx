@@ -51,6 +51,8 @@ export default function AdminLoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        // Only existing (allow-listed) users get a link — no junk signups.
+        shouldCreateUser: false,
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
       },
     });
