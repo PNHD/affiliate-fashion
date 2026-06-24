@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { motion, type Variants } from "framer-motion";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
-// ── Types ──
 interface Video {
   title: string;
   author_name: string;
@@ -18,7 +17,7 @@ interface Product {
   images: string[];
   sourceUrl: string;
 }
-interface Look {
+interface LookData {
   video: Video;
   products: Product[];
 }
@@ -28,284 +27,243 @@ interface OtherLook {
   thumbnail_url: string | null;
 }
 
-// ── Motion ──
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] },
-  },
-};
-
-// ── Helpers ──
-const getTikTokEmbedUrl = (url: string) => {
-  const m = url.match(/video\/(\d+)/) || url.match(/\/(\d{15,})/);
-  return m ? `https://www.tiktok.com/embed/v2/${m[1]}` : url;
-};
 const formatVND = (price: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(price);
-const trackClick = (id: string) =>
-  fetch("/api/click", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ product_id: id }),
-  }).catch(() => {});
 
-// ── Product thumbnail with graceful fallback ──
-function Thumb({ src, alt }: { src?: string; alt: string }) {
-  const [err, setErr] = useState(false);
-  if (!src || err)
-    return (
-      <div className="flex h-full w-full items-center justify-center text-brand-stone/30 dark:text-dark-muted/30">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1}>
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <path d="m21 15-5-5L5 21" />
-        </svg>
-      </div>
-    );
-  return (
-    <img
-      src={src}
-      alt={alt}
-      onError={() => setErr(true)}
-      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-    />
-  );
-}
+const getTikTokEmbedUrl = (url: string) => {
+  const match = url.match(/\/video\/(\d+)/) || url.match(/\/(\d{15,})/);
+  return match ? `https://www.tiktok.com/player/v1/${match[1]}` : null;
+};
 
 export default function LookDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [look, setLook] = useState<Look | null>(null);
+  const params = useParams();
+  const id = params.id as string;
+
+  const [look, setLook] = useState<LookData | null>(null);
+  const [otherLooks, setOtherLooks] = useState<OtherLook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [otherLooks, setOtherLooks] = useState<OtherLook[]>([]);
 
-  const fetchLook = useCallback(() => {
+  useEffect(() => {
     if (!id) return;
-    setIsLoading(true);
-    setError(false);
-    fetch(`/api/looks/${id}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Not found");
-        return r.json();
-      })
-      .then((d) => (d.success ? setLook(d.data) : setError(true)))
-      .catch(() => setError(true))
-      .finally(() => setIsLoading(false));
-  }, [id]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(false);
+      try {
+        const [lookRes, otherRes] = await Promise.all([
+          fetch(`/api/looks/${id}`),
+          fetch("/api/videos?limit=12"),
+        ]);
+        const lookData = await lookRes.json();
+        const otherData = await otherRes.json();
 
-  useEffect(() => {
-    fetchLook();
-  }, [fetchLook]);
+        if (lookData.success) setLook(lookData.data);
+        else setError(true);
 
-  useEffect(() => {
-    fetch("/api/videos?limit=12")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success)
+        if (otherData.success)
           setOtherLooks(
-            d.data
-              .filter((v: { id: string }) => v.id !== id)
-              .slice(0, 8)
-              .map((v: { id: string; title: string; thumbnail_url: string | null }) => ({
-                id: v.id,
-                title: v.title,
-                thumbnail_url: v.thumbnail_url,
-              })),
+            otherData.data.filter((l: OtherLook) => l.id !== id).slice(0, 6),
           );
-      })
-      .catch(() => {});
+      } catch {
+        setError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, [id]);
 
-  // ── Loading ──
+  const handleBuyClick = (product: Product) => {
+    fetch("/api/click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product_id: product.id }),
+    }).catch(() => {});
+  };
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-cream dark:bg-dark-base">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
-          <p className="font-display text-lg italic text-brand-stone dark:text-dark-muted">
-            Đang tải look...
-          </p>
-        </motion.div>
-      </div>
+      <main className="min-h-screen bg-[#FDF6F0] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#FF3D81] border-t-transparent rounded-full animate-spin" />
+      </main>
     );
   }
 
-  // ── Error ──
   if (error || !look) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-cream px-6 text-center dark:bg-dark-base">
-        <p className="font-display text-2xl text-brand-ink dark:text-dark-text">Không tải được look</p>
-        <button
-          onClick={fetchLook}
-          className="rounded-full bg-brand-ink px-6 py-3 text-body-sm font-medium text-white transition-all hover:bg-brand-ink/85 dark:bg-dark-text dark:text-dark-base"
+      <main className="min-h-screen bg-[#FDF6F0] flex flex-col items-center justify-center gap-4 px-6 text-center text-[#1A1A1A]">
+        <h1 className="font-['Bricolage_Grotesque',sans-serif] text-4xl font-bold">
+          Không tìm thấy look
+        </h1>
+        <Link
+          href="/"
+          className="rounded-full bg-[#1A1A1A] px-6 py-3 font-bold text-white transition-colors hover:bg-[#FF3D81]"
         >
-          Thử lại
-        </button>
-        <Link href="/" className="text-body-sm text-brand-accent hover:underline">
-          ← Về Lookbook
+          ← Về trang chủ
         </Link>
-      </div>
+      </main>
     );
   }
 
   const embedUrl = getTikTokEmbedUrl(look.video.platform_url);
-  const hasProducts = look.products.length > 0;
 
   return (
-    <main className="min-h-screen bg-brand-cream text-brand-ink antialiased dark:bg-dark-base dark:text-dark-text">
-      <div className="mx-auto max-w-7xl px-4 py-8 pt-24 sm:px-6 md:py-16 lg:px-8 lg:py-24 lg:pt-28">
-        {/* Breadcrumb */}
+    <main className="min-h-screen bg-[#FDF6F0] text-[#1A1A1A] font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-10 md:pt-28 md:pb-16">
+        {/* Back */}
         <Link
           href="/"
-          className="mb-8 inline-block text-body-sm text-brand-stone/70 transition-colors hover:text-brand-ink dark:text-dark-muted/70 dark:hover:text-dark-text"
+          className="inline-flex items-center gap-2 text-base font-bold mb-6 hover:text-[#FF3D81] transition-colors group"
         >
-          ← Lookbook
+          <span className="transition-transform group-hover:-translate-x-1">←</span> Quay lại
         </Link>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start lg:gap-16">
-          {/* LEFT — sticky video */}
-          <motion.section
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="flex justify-center lg:sticky lg:top-28"
-          >
-            <div className="relative aspect-[9/16] w-full max-w-sm overflow-hidden rounded-3xl border border-black/5 bg-stone-200 shadow-elevated dark:border-white/5 dark:bg-dark-card">
+        <div className="grid grid-cols-1 lg:grid-cols-[40%_1fr] gap-8 lg:gap-12">
+          {/* LEFT: video */}
+          <div className="lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] flex flex-col justify-center items-center w-full">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-3xl overflow-hidden shadow-2xl shadow-[#FF3D81]/20 border-4 border-white"
+            >
               {isVideoLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-accent border-t-transparent" />
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <div className="w-10 h-10 border-4 border-[#FF3D81] border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
-              <iframe
-                src={embedUrl}
-                title={look.video.title}
-                allow="encrypted-media; picture-in-picture; web-share; fullscreen"
-                allowFullScreen
-                onLoad={() => setIsVideoLoading(false)}
-                className="absolute inset-0 h-full w-full border-0"
-                scrolling="no"
-              />
-            </div>
-          </motion.section>
-
-          {/* RIGHT — details + products */}
-          <motion.section variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-8 lg:py-4">
-            {/* Header */}
-            <motion.div variants={fadeUp} className="flex flex-col gap-2 border-b border-brand-border pb-8 dark:border-dark-border">
-              {look.video.author_name && (
-                <p className="text-sm font-medium uppercase tracking-widest text-brand-accent dark:text-dark-accent">
-                  {look.video.author_name}
-                </p>
-              )}
-              <h1 className="font-display text-3xl font-medium tracking-tight text-brand-ink dark:text-dark-text md:text-4xl lg:text-5xl">
-                {look.video.title || "Xem outfit này"}
-              </h1>
-            </motion.div>
-
-            {/* Products */}
-            <div className="flex flex-col gap-6">
-              <motion.h2 variants={fadeUp} className="font-display text-2xl italic text-brand-stone dark:text-dark-muted">
-                Mặc gì trong look này
-              </motion.h2>
-
-              {!hasProducts ? (
-                <motion.div
-                  variants={fadeUp}
-                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-border bg-white/50 px-6 py-16 text-center dark:border-dark-border dark:bg-dark-card/50"
-                >
-                  <h3 className="mb-2 font-display text-2xl text-brand-ink dark:text-dark-text">Chưa gắn món nào</h3>
-                  <p className="max-w-xs text-brand-stone dark:text-dark-muted">
-                    Outfit này đang được cập nhật sản phẩm. Quay lại sau nhé!
-                  </p>
-                </motion.div>
+              {embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  title={look.video.title}
+                  allow="encrypted-media; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
+                  onLoad={() => setIsVideoLoading(false)}
+                  className="absolute inset-0 w-full h-full border-0"
+                  scrolling="no"
+                />
               ) : (
-                <motion.ul variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-4">
-                  {look.products.map((product) => (
-                    <motion.li
-                      key={product.id}
-                      variants={fadeUp}
-                      className="group flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-3 shadow-subtle transition-shadow duration-300 hover:shadow-card dark:border-white/5 dark:bg-dark-card/60 sm:gap-6 sm:p-4"
-                    >
-                      <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-surface-muted dark:bg-dark-cardHover sm:h-24 sm:w-24">
-                        <Thumb src={product.images[0]} alt={product.name} />
-                      </div>
+                <div className="flex items-center justify-center h-full text-white p-4 text-center">
+                  Video không tải được.
+                  <a href={look.video.platform_url} target="_blank" rel="noopener noreferrer" className="underline ml-2">
+                    Xem trên TikTok
+                  </a>
+                </div>
+              )}
+            </motion.div>
+            <div className="mt-4 text-center max-w-[320px]">
+              <h1 className="font-['Bricolage_Grotesque',sans-serif] text-2xl md:text-3xl font-bold leading-tight">
+                {look.video.title}
+              </h1>
+              {look.video.author_name && (
+                <p className="text-sm font-bold text-[#FF3D81] mt-1">{look.video.author_name}</p>
+              )}
+            </div>
+          </div>
 
-                      <div className="min-w-0 flex-grow">
-                        <h3 className="truncate text-base font-medium text-brand-ink dark:text-dark-text sm:text-lg">
-                          {product.name}
-                        </h3>
+          {/* RIGHT: products */}
+          <div className="flex flex-col gap-6 lg:pt-4">
+            <motion.h2
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="font-['Bricolage_Grotesque',sans-serif] text-4xl md:text-5xl font-bold flex flex-wrap items-center gap-x-3"
+            >
+              Mặc gì <span className="text-[#FF3D81]">trong look này</span>
+            </motion.h2>
+
+            {look.products.length === 0 ? (
+              <div className="border-4 border-dashed border-[#00EBC7] rounded-3xl p-8 bg-white/50 text-center mt-4">
+                <h3 className="font-['Bricolage_Grotesque',sans-serif] text-3xl mb-4">Chưa gắn món nào</h3>
+                <p className="text-[#1A1A1A]/60">Thiên Kim đang cập nhật sản phẩm. Check lại sau nha!</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 md:gap-6">
+                {look.products.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex flex-col sm:flex-row gap-4 p-4 bg-white rounded-2xl shadow-sm border border-black/5 hover:shadow-xl hover:shadow-[#FF3D81]/10 transition-shadow duration-300"
+                  >
+                    <div className="w-full sm:w-28 h-40 sm:h-28 rounded-xl overflow-hidden bg-gradient-to-br from-[#FF3D81]/15 to-[#00EBC7]/15 flex-shrink-0">
+                      {product.images[0] && (
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex flex-col justify-between flex-1 py-1 min-w-0">
+                      <div>
+                        <h3 className="font-bold text-lg md:text-xl leading-tight">{product.name}</h3>
                         {product.price > 0 && (
-                          <p className="mt-1 text-sm font-light text-brand-stone dark:text-dark-muted sm:text-base">
+                          <p className="text-2xl font-['Bricolage_Grotesque',sans-serif] font-bold mt-1 text-[#1A1A1A]">
                             {formatVND(product.price)}
                           </p>
                         )}
                       </div>
+                    </div>
 
+                    <div className="flex sm:flex-col items-center sm:justify-center justify-end gap-2">
                       <motion.a
                         href={product.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer sponsored"
-                        onClick={() => trackClick(product.id)}
+                        onClick={() => handleBuyClick(product)}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex-shrink-0 rounded-full bg-brand-accent px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors duration-200 hover:bg-brand-accent-hover focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2 focus:ring-offset-brand-cream dark:bg-dark-accent dark:hover:bg-dark-accent-hover dark:focus:ring-offset-dark-base sm:px-7 sm:py-3 sm:text-base"
+                        className="w-full sm:w-auto px-8 py-3 bg-[#FF3D81] text-white font-bold text-center rounded-xl shadow-md hover:bg-[#1A1A1A] transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-[#00EBC7]"
                         aria-label={`Mua ${product.name}`}
                       >
                         Mua
                       </motion.a>
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              )}
-            </div>
-          </motion.section>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* OTHER LOOKS */}
         {otherLooks.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6 }}
-            className="mt-20 border-t border-brand-border pt-10 dark:border-dark-border lg:mt-32"
-          >
-            <h2 className="mb-6 font-display text-2xl text-brand-ink dark:text-dark-text">Looks khác</h2>
-            <div className="scroll-container">
+          <section className="mt-16 md:mt-24 border-t border-black/10 pt-10">
+            <h2 className="font-['Bricolage_Grotesque',sans-serif] text-3xl md:text-4xl font-bold mb-6">Looks khác</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
               {otherLooks.map((l) => (
-                <Link
-                  key={l.id}
-                  href={`/looks/${l.id}`}
-                  className="group relative h-44 w-32 flex-shrink-0 overflow-hidden rounded-2xl bg-surface-muted dark:bg-dark-cardHover sm:h-56 sm:w-40"
-                >
-                  {l.thumbnail_url ? (
-                    <img
-                      src={l.thumbnail_url}
-                      alt={l.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center p-3 text-center text-caption text-brand-stone dark:text-dark-muted">
-                      {l.title}
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <Link key={l.id} href={`/looks/${l.id}`} className="flex-shrink-0 w-36 md:w-44 group">
+                  <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden bg-gradient-to-br from-[#FF3D81]/20 to-[#00EBC7]/20">
+                    {l.thumbnail_url ? (
+                      <img
+                        src={l.thumbnail_url}
+                        alt={l.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center p-3 text-center text-sm font-bold text-[#1A1A1A]/60">
+                        {l.title}
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm font-semibold truncate">{l.title}</p>
                 </Link>
               ))}
             </div>
-          </motion.section>
+          </section>
         )}
       </div>
     </main>
